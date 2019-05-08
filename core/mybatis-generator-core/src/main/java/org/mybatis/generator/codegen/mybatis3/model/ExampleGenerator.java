@@ -777,7 +777,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
         method.addBodyLine("if(map.isEmpty()) return (Criteria) this;");
         method.addBodyLine("StringBuilder sb = new StringBuilder();");
         method.addBodyLine("sb.append(\"(\");");
-        method.addBodyLine("Set<String> keySet = map.keySet();");
+        method.addBodyLine("java.util.Set<String> keySet = map.keySet();");
         method.addBodyLine("for (String str : keySet) {");
         method.addBodyLine("sb.append(\" or \"+str+\" like '%%\"+map.get(str)+\"%%'\");");
         method.addBodyLine("}");
