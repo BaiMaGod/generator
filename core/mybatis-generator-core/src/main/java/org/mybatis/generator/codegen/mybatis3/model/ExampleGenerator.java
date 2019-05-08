@@ -1,5 +1,5 @@
 /**
- *    Copyright 2006-2018 the original author or authors.
+ *    Copyright 2006-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -39,9 +39,9 @@ import org.mybatis.generator.codegen.AbstractJavaGenerator;
 import org.mybatis.generator.codegen.mybatis3.MyBatis3FormattingUtilities;
 
 /**
- * 
+ *
  * @author Jeff Butler
- * 
+ *
  */
 public class ExampleGenerator extends AbstractJavaGenerator {
 
@@ -115,6 +115,46 @@ public class ExampleGenerator extends AbstractJavaGenerator {
         method.setReturnType(FullyQualifiedJavaType
                 .getBooleanPrimitiveInstance());
         method.addBodyLine("return distinct;"); //$NON-NLS-1$
+        commentGenerator.addGeneralMethodComment(method, introspectedTable);
+        topLevelClass.addMethod(method);
+
+        // add field, getter, setter for startRow
+        field = new Field("startRow", FullyQualifiedJavaType.getIntInstance()); //$NON-NLS-1$
+        field.setVisibility(JavaVisibility.PROTECTED);
+        commentGenerator.addFieldComment(field, introspectedTable);
+        topLevelClass.addField(field);
+
+        method = new Method("setStartRow"); //$NON-NLS-1$
+        method.setVisibility(JavaVisibility.PUBLIC);
+        method.addParameter(new Parameter(FullyQualifiedJavaType.getIntInstance(), "startRow")); //$NON-NLS-1$
+        method.addBodyLine("this.startRow = startRow;"); //$NON-NLS-1$
+        commentGenerator.addGeneralMethodComment(method, introspectedTable);
+        topLevelClass.addMethod(method);
+
+        method = new Method("getStartRow"); //$NON-NLS-1$
+        method.setVisibility(JavaVisibility.PUBLIC);
+        method.setReturnType(FullyQualifiedJavaType.getIntInstance());
+        method.addBodyLine("return startRow;"); //$NON-NLS-1$
+        commentGenerator.addGeneralMethodComment(method, introspectedTable);
+        topLevelClass.addMethod(method);
+
+        // add field, getter, setter for endRow
+        field = new Field("pageRows", FullyQualifiedJavaType.getIntInstance()); //$NON-NLS-1$
+        field.setVisibility(JavaVisibility.PROTECTED);
+        commentGenerator.addFieldComment(field, introspectedTable);
+        topLevelClass.addField(field);
+
+        method = new Method("setPageRows"); //$NON-NLS-1$
+        method.setVisibility(JavaVisibility.PUBLIC);
+        method.addParameter(new Parameter(FullyQualifiedJavaType.getIntInstance(), "pageRows")); //$NON-NLS-1$
+        method.addBodyLine("this.pageRows = pageRows;"); //$NON-NLS-1$
+        commentGenerator.addGeneralMethodComment(method, introspectedTable);
+        topLevelClass.addMethod(method);
+
+        method = new Method("getPageRows"); //$NON-NLS-1$
+        method.setVisibility(JavaVisibility.PUBLIC);
+        method.setReturnType(FullyQualifiedJavaType.getIntInstance());
+        method.addBodyLine("return pageRows;"); //$NON-NLS-1$
         commentGenerator.addGeneralMethodComment(method, introspectedTable);
         topLevelClass.addMethod(method);
 
@@ -409,7 +449,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
             field.setVisibility(JavaVisibility.PROTECTED);
             answer.addField(field);
         }
-        
+
         method = new Method("getAllCriteria"); //$NON-NLS-1$
         method.setVisibility(JavaVisibility.PUBLIC);
         method.setReturnType(new FullyQualifiedJavaType("List<Criterion>")); //$NON-NLS-1$
@@ -667,6 +707,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
             answer.addMethod(getSetBetweenOrNotBetweenMethod(
                     introspectedColumn, false));
         }
+        answer.addMethod(getMultiseriateOrLike());
 
         return answer;
     }
@@ -715,9 +756,44 @@ public class ExampleGenerator extends AbstractJavaGenerator {
         return getSingleValueMethod(introspectedColumn, "NotLike", "not like"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
+
+    //    生成 multiseriateOrLike() 方法的方法
+    private Method getMultiseriateOrLike() {
+//        设置方法名
+        StringBuilder sb = new StringBuilder();
+        sb.append("andMultiseriateOrLike");
+
+        Method method = new Method(sb.toString());
+//        设置方法的访问级别
+        method.setVisibility(JavaVisibility.PUBLIC);
+//        设置方法的参数,参数类型为 hashMap,参数名为 map
+        method.addParameter(new Parameter(new FullyQualifiedJavaType("java.util.HashMap<String, String>"), "map")); //$NON-NLS-1$
+//        设置方法的返回类型
+        method.setReturnType(FullyQualifiedJavaType.getCriteriaInstance());
+
+//        清空sb;
+        sb.setLength(0);
+
+        method.addBodyLine("if(map.isEmpty()) return (Criteria) this;");
+        method.addBodyLine("StringBuilder sb = new StringBuilder();");
+        method.addBodyLine("sb.append(\"(\");");
+        method.addBodyLine("Set<String> keySet = map.keySet();");
+        method.addBodyLine("for (String str : keySet) {");
+        method.addBodyLine("sb.append(\" or \"+str+\" like '%%\"+map.get(str)+\"%%'\");");
+        method.addBodyLine("}");
+        method.addBodyLine("sb.append(\")\");");
+        method.addBodyLine("int index = sb.indexOf(\"or\");");
+        method.addBodyLine("sb.delete(index, index+2);");
+        method.addBodyLine("addCriterion(sb.toString());");
+        method.addBodyLine("return (Criteria) this;");
+
+        return method;
+    }
+
+
     private Method getSingleValueMethod(IntrospectedColumn introspectedColumn,
-            String nameFragment, String operator) {
-        
+                                        String nameFragment, String operator) {
+
         StringBuilder sb = new StringBuilder();
         sb.append(introspectedColumn.getJavaProperty());
         sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
@@ -762,14 +838,14 @@ public class ExampleGenerator extends AbstractJavaGenerator {
 
     /**
      * Generates methods that set between and not between conditions.
-     * 
+     *
      * @param introspectedColumn the introspected column
      * @param betweenMethod true if between, else not between
      * @return a generated method for the between or not between method
      */
     private Method getSetBetweenOrNotBetweenMethod(
             IntrospectedColumn introspectedColumn, boolean betweenMethod) {
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append(introspectedColumn.getJavaProperty());
         sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
@@ -823,7 +899,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
 
     /**
      * Generates an In or NotIn method.
-     * 
+     *
      * @param introspectedColumn the introspected column
      * @param inMethod
      *            if true generates an "in" method, else generates a "not in"
@@ -831,7 +907,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
      * @return a generated method for the in or not in method
      */
     private Method getSetInOrNotInMethod(IntrospectedColumn introspectedColumn,
-            boolean inMethod) {
+                                         boolean inMethod) {
         StringBuilder sb = new StringBuilder();
         sb.append(introspectedColumn.getJavaProperty());
         sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
@@ -889,17 +965,17 @@ public class ExampleGenerator extends AbstractJavaGenerator {
     }
 
     private Method getNoValueMethod(IntrospectedColumn introspectedColumn,
-            String nameFragment, String operator) {
+                                    String nameFragment, String operator) {
         StringBuilder sb = new StringBuilder();
         sb.append(introspectedColumn.getJavaProperty());
         sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
         sb.insert(0, "and"); //$NON-NLS-1$
         sb.append(nameFragment);
         Method method = new Method(sb.toString());
-        
+
         method.setVisibility(JavaVisibility.PUBLIC);
         method.setReturnType(FullyQualifiedJavaType.getCriteriaInstance());
-        
+
         sb.setLength(0);
         sb.append("addCriterion(\""); //$NON-NLS-1$
         sb.append(MyBatis3FormattingUtilities
@@ -916,7 +992,7 @@ public class ExampleGenerator extends AbstractJavaGenerator {
     /**
      * This method adds all the extra methods and fields required to support a
      * user defined type handler on some column.
-     * 
+     *
      * @param introspectedColumn the introspected column
      * @param constructor the constructor
      * @param innerClass the enclosing class
@@ -1000,14 +1076,14 @@ public class ExampleGenerator extends AbstractJavaGenerator {
         if (!introspectedColumn.getFullyQualifiedJavaType().isPrimitive()) {
             method.addBodyLine("if (value1 == null || value2 == null) {"); //$NON-NLS-1$
             method
-                .addBodyLine("throw new RuntimeException(\"Between values for \" + property + \" cannot be null\");"); //$NON-NLS-1$
+                    .addBodyLine("throw new RuntimeException(\"Between values for \" + property + \" cannot be null\");"); //$NON-NLS-1$
             method.addBodyLine("}"); //$NON-NLS-1$
         }
 
         method.addBodyLine(
                 String.format("%s.add(new Criterion(condition, value1, value2, \"%s\"));", //$NON-NLS-1$
                         field.getName(), introspectedColumn.getTypeHandler()));
-        
+
         method.addBodyLine("allCriteria = null;"); //$NON-NLS-1$
         innerClass.addMethod(method);
 
